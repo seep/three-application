@@ -1,0 +1,19 @@
+{
+  "name": "three-application",
+  "version": "0.1.0",
+  "description": "three-application",
+  "main": "src/three-application.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seep/three-application.git"
+  },
+  "author": "Chris Parker",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/seep/three-application/issues"
+  },
+  "homepage": "https://github.com/seep/three-application#readme"
+}
