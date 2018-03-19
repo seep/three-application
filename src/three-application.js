@@ -1,4 +1,17 @@
-import { EventDispatcher, WebGLRenderer, PerspectiveCamera, Scene, Clock, Vector2 } from 'three';
+import { EventDispatcher, WebGLRenderer, PerspectiveCamera, Scene, Clock, Vector2, ShaderChunk } from 'three';
+
+/**
+ * The application shader chunk.
+ * @type {string}
+ */
+const shaderchunk = `
+
+uniform vec2 screen;
+uniform vec2 mouse;
+uniform float dt;
+uniform float time;
+
+`;
 
 /**
  * Create a general purpose three.js application that manages a renderer initialization, an update
@@ -13,55 +26,53 @@ export function Application(options) {
 
   const renderer = new WebGLRenderer({ antialias: true });
   const camera = new PerspectiveCamera(45, 1, 0.1, 1000);
+  const clock = new Clock(false);
   const scene = new Scene();
   const mouse = new Vector2(0, 0);
-  const clock = new Clock(false);
+  const screen = new Vector2(0, 0);
 
   let rafID = null; // the return value of requestAnimationFrame
 
+  const uniforms = {
+    screen: { value: screen },
+    mouse: { value: mouse },
+    time: { value: 0.0 },
+    dt: { value: 0.0 },
+  };
+
   const app = Object.create(EventDispatcher.prototype, {
 
-    renderer: {
-      value: renderer,
-      writable: false,
-    },
-
-    canvas: {
-      value: renderer.domElement,
-      writable: false,
-    },
+    renderer: { writable: false, value: renderer },
+    camera:   { writable: false, value: camera },
+    canvas:   { writable: false, value: renderer.domElement },
+    scene:    { writable: false, value: scene },
+    mouse:    { writable: false, value: mouse },
+    uniforms: { writable: false, value: uniforms },
 
     width: {
-      get: () => renderer.getSize().width,
-      set: () => { throw new Error('The "width" property is readonly.') },
+      get() { return screen.x },
+      set() { throw new Error('The "width" property is readonly.') },
     },
 
     height: {
-      get: () => renderer.getSize().height,
-      set: () => { throw new Error('The "height" property is readonly.') },
-    },
-
-    scene: {
-      value: scene,
-      writable: false,
-    },
-
-    camera: {
-      value: camera,
-      writable: false,
-    },
-
-    mouse: {
-      value: mouse,
-      writable: false,
+      get() { return screen.y },
+      set() { throw new Error('The "height" property is readonly.') },
     },
 
     time: {
-      get: () => clock.elapsedTime,
-      set: () => { throw new Error('The "time" property is readonly.') },
+      get() { return clock.elapsedTime },
+      set() { throw new Error('The "time" property is readonly.') },
     }
 
   });
+
+  // Add the shader chunk to the lib, unless the user wants to manage that themselves.
+
+  if (options.addShaderChunk !== false) {
+
+    ShaderChunk.app = shaderchunk;
+
+  }
 
   // Queue the resize/mousemove events and dispatch them once per animation frame.
 
@@ -70,7 +81,6 @@ export function Application(options) {
 
   const onResize = (event) => queuedResizeEvent = event;
   const onMousemove = (event) => queuedMousemoveEvent = event;
-
 
   // Make some event flyweights so we aren't allocating objects every frame.
 
@@ -85,25 +95,33 @@ export function Application(options) {
   scene.camera = camera;
 
   /**
-   * Start running the app.
+   * Start running the application. On every frame, the app will update it's uniforms, dispatch the
+   * update event, and call it's own render function. If the app is already running, it will do
+   * return silently.
    */
   app.start = function start() {
 
     if (rafID !== null) return;
+
+    handleResize();
 
     window.addEventListener('resize', onResize);
     window.addEventListener('mousemove', onMousemove);
 
     clock.start();
 
-    handleResize();
-
     function loop() {
 
-      updateEventFlyweight.dt = clock.getDelta();
-      updateEventFlyweight.time = clock.elapsedTime;
+      const delta = clock.getDelta();
+      const time = clock.elapsedTime;
 
+      uniforms.dt.value = delta;
+      uniforms.time.value = time;
+
+      updateEventFlyweight.dt = delta;
+      updateEventFlyweight.time = time;
       app.dispatchEvent(updateEventFlyweight);
+
       app.render();
 
       rafID = requestAnimationFrame(loop);
@@ -117,9 +135,9 @@ export function Application(options) {
   };
 
   /**
-   * Stop running the app.
+   * Stop running the application. If the app is not running, it will return silently.
    */
-  app.stop = function () {
+  app.stop = function stop() {
 
     if (rafID === null) return;
 
@@ -129,7 +147,6 @@ export function Application(options) {
     window.removeEventListener('mousemove', onMousemove);
 
     cancelAnimationFrame(rafID);
-
     rafID = null;
 
     app.dispatchEvent({ type: 'stop' });
@@ -137,7 +154,7 @@ export function Application(options) {
   };
 
   /**
-   * Called on each animation frame.
+   * Render the scene using whatever camera is assigned to `scene.camera`.
    */
   app.render = function () {
 
@@ -145,10 +162,8 @@ export function Application(options) {
     if (queuedMousemoveEvent) handleMousemove();
 
     if (!scene.camera || !scene.camera.isCamera) {
-
       console.warn("A custom camera was assigned to `scene.camera` but it isn't a recognizable three.js camera object. Falling back to the default camera.");
       scene.camera = camera;
-
     }
 
     renderer.render(scene, scene.camera);
@@ -165,12 +180,11 @@ export function Application(options) {
     renderer.setSize(width, height, true);
 
     if (scene.camera === camera) {
-
-      // update the default camera if it hasn't been overwritten
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
-
     }
+
+    screen.set(width, height);
 
     resizeEventFlyweight.width = width;
     resizeEventFlyweight.height = height;
@@ -191,7 +205,6 @@ export function Application(options) {
     const normalizedY = 2 * (1 - queuedMousemoveEvent.clientY / height) - 1;
 
     mouse.set(normalizedX, normalizedY);
-
     mousemoveEventFlyweight.mouse = mouse;
 
     queuedMousemoveEvent = null;
@@ -212,14 +225,14 @@ export function Application(options) {
 function acquireRAF() {
 
   const requestAnimationFrame = window.requestAnimationFrame ||
-    window.mozRequestAnimationFrame ||
-    window.webkitRequestAnimationFrame;
+                                window.mozRequestAnimationFrame ||
+                                window.webkitRequestAnimationFrame;
 
   if (requestAnimationFrame === undefined) throw new Error('window.requestAnimationFrame is missing');
 
   const cancelAnimationFrame = window.cancelAnimationFrame ||
-    window.mozCancelAnimationFrame ||
-    window.webkitCancelAnimationFrame;
+                               window.mozCancelAnimationFrame ||
+                               window.webkitCancelAnimationFrame;
 
   if (cancelAnimationFrame === undefined) throw new Error('window.cancelAnimationFrame is missing');
 
