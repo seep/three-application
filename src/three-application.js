@@ -68,7 +68,7 @@ export function Application(options) {
 
   // Add the shader chunk to the lib, unless the user wants to manage that themselves.
 
-  if (options.addShaderChunk !== false) {
+  if (!(options && options.addShaderChunk === false)) {
 
     ShaderChunk.app = shaderchunk;
 
