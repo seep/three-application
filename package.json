@@ -1,6 +1,6 @@
 {
   "name": "three-application",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A general purpose three.js application that manages a renderer initialization, an update loop, window resizing, and mouse movement.",
   "main": "lib/three-application.js",
   "module": "src/three-application.js",

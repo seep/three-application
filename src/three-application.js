@@ -20,7 +20,7 @@ uniform float time;
  * @return {Application}
  * @constructor
  */
-export function Application(options) {
+export function Application(options = {}) {
 
   const { requestAnimationFrame, cancelAnimationFrame } = acquireRAF();
 
@@ -68,7 +68,7 @@ export function Application(options) {
 
   // Add the shader chunk to the lib, unless the user wants to manage that themselves.
 
-  if (!(options && options.addShaderChunk === false)) {
+  if (options.addShaderChunk !== false) {
 
     ShaderChunk.app = shaderchunk;
 
