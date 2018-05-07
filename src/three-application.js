@@ -1,4 +1,4 @@
-import { EventDispatcher, WebGLRenderer, PerspectiveCamera, Scene, Clock, Vector2, ShaderChunk } from 'three';
+import { EventDispatcher, WebGLRenderer, PerspectiveCamera, Scene, Clock, Vector2, ShaderChunk, Math as MathExt } from 'three';
 
 /**
  * The application shader chunk.
@@ -172,12 +172,12 @@ export function Application(options = {}) {
 
   function handleResize() {
 
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const width = renderer.domElement.clientWidth;
+    const height = renderer.domElement.clientHeight;
     const pratio = window.devicePixelRatio || 1;
 
     renderer.setPixelRatio(pratio);
-    renderer.setSize(width, height, true);
+    renderer.setSize(width, height, false);
 
     if (scene.camera === camera) {
       camera.aspect = width / height;
@@ -197,12 +197,12 @@ export function Application(options = {}) {
 
   function handleMousemove() {
 
-    const width = window.innerWidth;
-    const height = window.innerHeight;
+    const width = renderer.domElement.clientWidth;
+    const height = renderer.domElement.clientHeight;
 
     // normalize the mouse coordinate to [-1, 1]
-    const normalizedX = 2 * (queuedMousemoveEvent.clientX / width) - 1;
-    const normalizedY = 2 * (1 - queuedMousemoveEvent.clientY / height) - 1;
+    const normalizedX = MathExt.clamp((2 * queuedMousemoveEvent.clientX / width) - 1, -1, 1);
+    const normalizedY = MathExt.clamp((2 * -queuedMousemoveEvent.clientY / height) + 1, -1, 1);
 
     mouse.set(normalizedX, normalizedY);
     mousemoveEventFlyweight.mouse = mouse;
