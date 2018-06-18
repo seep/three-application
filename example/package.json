@@ -1,0 +1,16 @@
+{
+  "name": "three-application-example",
+  "private": "true",
+  "scripts": {
+    "build": "rollup -c",
+    "watch": "rollup -c -w"
+  },
+  "dependencies": {
+    "three": "^0.93.0",
+    "three-application": ".."
+  },
+  "devDependencies": {
+    "rollup": "^0.60.7",
+    "rollup-plugin-node-resolve": "^3.3.0"
+  }
+}
